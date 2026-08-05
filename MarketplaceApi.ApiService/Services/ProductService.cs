@@ -13,25 +13,25 @@ public class ProductService : IProductService
         _repository = repository;
     }
 
-    public IEnumerable<Product> GetAll()
+    public async Task<IEnumerable<Product>> GetAllAsync()
     {
-        return _repository.GetAll();
+        return await _repository.GetAllAsync();
     }
 
-    public Product Add(Product product)
+    public async Task<Product> AddAsync(Product product)
     {
-        // Aqui entrariam as validações de negócio.
-        // Exemplo: Garantimos que o produto receba um novo ID (já que estamos a usar records)
-        var newProduct = product with { Id = Guid.NewGuid() };
+        // Correção do erro: Como Product agora é uma "class", 
+        // apenas atribuímos o novo ID diretamente à propriedade.
+        product.Id = Guid.NewGuid();
 
-        _repository.Add(newProduct);
-        return newProduct;
+        await _repository.AddAsync(product);
+
+        return product;
     }
 
-    public bool Delete(Guid id)
+    public async Task<bool> DeleteAsync(Guid id)
     {
         // Aqui poderíamos validar se o produto existe antes de tentar deletar
-        _repository.Delete(id);
-        return true;
+        return await _repository.DeleteAsync(id);
     }
 }

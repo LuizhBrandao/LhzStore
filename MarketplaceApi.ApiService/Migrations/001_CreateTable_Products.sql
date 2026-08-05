@@ -1,0 +1,12 @@
+CREATE TABLE Products (
+    Id UNIQUEIDENTIFIER PRIMARY KEY,
+    ExternalCardId VARCHAR(100) NOT NULL,
+    Name NVARCHAR(150) NOT NULL,
+    Collection NVARCHAR(100) NOT NULL,
+    ImageUrl NVARCHAR(500) NULL,
+    Condition INT NOT NULL, 
+    Language INT NOT NULL,
+    StockQuantity INT NOT NULL DEFAULT 0,
+    AveragePurchasePrice DECIMAL(18,2) NOT NULL DEFAULT 0.00,
+    LigaPokemonPrice DECIMAL(18,2) NOT NULL DEFAULT 0.00
+);

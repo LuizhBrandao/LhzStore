@@ -1,47 +1,63 @@
+using System.Data;
+using Microsoft.Data.SqlClient;
+using System.Reflection;
+using DbUp;
+using MarketplaceApi.ApiService.Interfaces;
+using MarketplaceApi.ApiService.Repositories;
+
 var builder = WebApplication.CreateBuilder(args);
 
-// Add service defaults & Aspire client integrations.
-builder.AddServiceDefaults();
+// 1. Registra a conexão com o banco de dados gerenciado pelo Aspire
+builder.AddSqlServerClient("sqldata");
 
-// Add services to the container.
-builder.Services.AddProblemDetails();
+builder.Services.AddScoped<IDbConnection>(sp => sp.GetRequiredService<SqlConnection>());
 
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-builder.Services.AddOpenApi();
+// (Mantenha seus outros registros aqui, como o AddEndpointsApiExplorer, Swagger, etc)
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+
+// Registra o seu repositório (caso ainda não tenha feito)
+builder.Services.AddScoped<IProductRepository, ProductRepository>();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
-app.UseExceptionHandler();
-
-if (app.Environment.IsDevelopment())
+// ==========================================
+// 2. EXECUÇÃO DO DBUP (MIGRATIONS)
+// ==========================================
+using (var scope = app.Services.CreateScope())
 {
-    app.MapOpenApi();
+    // Pega a string de conexão que o Aspire injetou magicamente
+    var connectionString = builder.Configuration.GetConnectionString("sqldata");
+
+    // Garante que o banco de dados exista dentro do container Docker
+    EnsureDatabase.For.SqlDatabase(connectionString);
+
+    // Configura o DbUp para ler os arquivos .sql da pasta Migrations
+    var upgrader = DeployChanges.To
+        .SqlDatabase(connectionString)
+        .WithScriptsEmbeddedInAssembly(Assembly.GetExecutingAssembly())
+        .LogToConsole()
+        .Build();
+
+    // Roda os scripts no banco
+    var result = upgrader.PerformUpgrade();
+
+    if (!result.Successful)
+    {
+        Console.ForegroundColor = ConsoleColor.Red;
+        Console.WriteLine($"Erro nas migrations: {result.Error}");
+        Console.ResetColor();
+    }
+    else
+    {
+        Console.ForegroundColor = ConsoleColor.Green;
+        Console.WriteLine("Migrations executadas com sucesso!");
+        Console.ResetColor();
+    }
 }
+// ==========================================
 
-string[] summaries = ["Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"];
-
-app.MapGet("/", () => "API service is running. Navigate to /weatherforecast to see sample data.");
-
-app.MapGet("/weatherforecast", () =>
-{
-    var forecast = Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
-})
-.WithName("GetWeatherForecast");
+// (Mantenha o restante do seu código: app.UseSwagger(), map dos endpoints, etc.)
 
 app.MapDefaultEndpoints();
-
 app.Run();
-
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}

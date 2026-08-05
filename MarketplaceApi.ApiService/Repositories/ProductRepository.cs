@@ -1,26 +1,88 @@
-﻿using MarketplaceApi.ApiService.Interfaces;
+﻿using System.Data;
+using Dapper;
+using MarketplaceApi.ApiService.Interfaces;
 using MarketplaceApi.ApiService.Models;
 
 namespace MarketplaceApi.ApiService.Repositories;
 
 public class ProductRepository : IProductRepository
 {
-    // Utilizamos uma lista privada em memória para simular o banco de dados
-    private readonly List<Product> _products = new();
+    private readonly IDbConnection _dbConnection;
 
-    public IEnumerable<Product> GetAll()
+    // Injeção de dependência da conexão com o banco (fornecida pelo Aspire)
+    public ProductRepository(IDbConnection dbConnection)
     {
-        return _products;
+        _dbConnection = dbConnection;
     }
 
-    public void Add(Product product)
+    public async Task<IEnumerable<Product>> GetAllAsync()
     {
-        _products.Add(product);
+        // O Dapper fará o match automático das colunas com as propriedades da classe Product,
+        // ignorando as propriedades calculadas (FinalSalePrice, Sku, etc).
+        const string sql = @"
+            SELECT 
+                Id, ExternalCardId, Name, Collection, ImageUrl, 
+                Condition, Language, StockQuantity, 
+                AveragePurchasePrice, LigaPokemonPrice
+            FROM Products";
+
+        return await _dbConnection.QueryAsync<Product>(sql);
     }
 
-    public void Delete(Guid id)
+    public async Task<Product?> GetByIdAsync(Guid id)
     {
-        // Remove todos os produtos que tenham o Id correspondente (neste caso, será apenas um)
-        _products.RemoveAll(p => p.Id == id);
+        const string sql = @"
+            SELECT 
+                Id, ExternalCardId, Name, Collection, ImageUrl, 
+                Condition, Language, StockQuantity, 
+                AveragePurchasePrice, LigaPokemonPrice
+            FROM Products 
+            WHERE Id = @Id";
+
+        return await _dbConnection.QuerySingleOrDefaultAsync<Product>(sql, new { Id = id });
+    }
+
+    public async Task<bool> AddAsync(Product product)
+    {
+        // Ao inserir, enviamos apenas os dados base.
+        const string sql = @"
+            INSERT INTO Products (
+                Id, ExternalCardId, Name, Collection, ImageUrl, 
+                Condition, Language, StockQuantity, 
+                AveragePurchasePrice, LigaPokemonPrice
+            ) VALUES (
+                @Id, @ExternalCardId, @Name, @Collection, @ImageUrl, 
+                @Condition, @Language, @StockQuantity, 
+                @AveragePurchasePrice, @LigaPokemonPrice
+            )";
+
+        var rowsAffected = await _dbConnection.ExecuteAsync(sql, product);
+        return rowsAffected > 0;
+    }
+
+    public async Task<bool> UpdateAsync(Product product)
+    {
+        const string sql = @"
+            UPDATE Products SET 
+                ExternalCardId = @ExternalCardId,
+                Name = @Name,
+                Collection = @Collection,
+                ImageUrl = @ImageUrl,
+                Condition = @Condition,
+                Language = @Language,
+                StockQuantity = @StockQuantity,
+                AveragePurchasePrice = @AveragePurchasePrice,
+                LigaPokemonPrice = @LigaPokemonPrice
+            WHERE Id = @Id";
+
+        var rowsAffected = await _dbConnection.ExecuteAsync(sql, product);
+        return rowsAffected > 0;
+    }
+
+    public async Task<bool> DeleteAsync(Guid id)
+    {
+        const string sql = "DELETE FROM Products WHERE Id = @Id";
+        var rowsAffected = await _dbConnection.ExecuteAsync(sql, new { Id = id });
+        return rowsAffected > 0;
     }
 }

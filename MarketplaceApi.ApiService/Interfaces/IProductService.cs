@@ -4,7 +4,7 @@ namespace MarketplaceApi.ApiService.Interfaces;
 
 public interface IProductService
 {
-    IEnumerable<Product> GetAll();
-    Product Add(Product product);
-    bool Delete(Guid id);
+    Task<IEnumerable<Product>> GetAllAsync();
+    Task<Product> AddAsync(Product product);
+    Task<bool> DeleteAsync(Guid id);
 }

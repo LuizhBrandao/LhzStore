@@ -8,6 +8,11 @@
     <UserSecretsId>01375735-6986-4bc2-8081-ea733e5b3b32</UserSecretsId>
   </PropertyGroup>
 
+	<ItemGroup>
+		<PackageReference Include="Aspire.Hosting.AppHost" Version="8.0.0" />
+		<PackageReference Include="Aspire.Hosting.SqlServer" Version="8.2.0" />
+	</ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\MarketplaceApi.ApiService\MarketplaceApi.ApiService.csproj" />
     <ProjectReference Include="..\MarketplaceApi.Web\MarketplaceApi.Web.csproj" />
