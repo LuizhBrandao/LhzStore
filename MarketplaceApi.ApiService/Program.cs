@@ -7,7 +7,22 @@ using MarketplaceApi.ApiService.Repositories;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 1. Registra a conexão com o banco de dados gerenciado pelo Aspire
+// =========================================================================
+// 1. AJUSTE PARA O ASPIRE (IGNORAR ERRO DE CERTIFICADO LOCAL)
+// =========================================================================
+// Captura a connection string que o Aspire gerou e injetou dinamicamente
+var connectionString = builder.Configuration.GetConnectionString("sqldata");
+
+// Se ela existir e ainda não tiver o TrustServerCertificate, nós adicionamos
+if (!string.IsNullOrEmpty(connectionString) && !connectionString.Contains("TrustServerCertificate"))
+{
+    connectionString += ";TrustServerCertificate=True;";
+    // Sobrescreve a configuração na memória com o parâmetro novo
+    builder.Configuration["ConnectionStrings:sqldata"] = connectionString;
+}
+// =========================================================================
+
+// 2. Registra a conexão com o banco de dados gerenciado pelo Aspire (agora com o certificado confiável)
 builder.AddSqlServerClient("sqldata");
 
 builder.Services.AddScoped<IDbConnection>(sp => sp.GetRequiredService<SqlConnection>());
@@ -22,19 +37,19 @@ builder.Services.AddScoped<IProductRepository, ProductRepository>();
 var app = builder.Build();
 
 // ==========================================
-// 2. EXECUÇÃO DO DBUP (MIGRATIONS)
+// 3. EXECUÇÃO DO DBUP (MIGRATIONS)
 // ==========================================
 using (var scope = app.Services.CreateScope())
 {
-    // Pega a string de conexão que o Aspire injetou magicamente
-    var connectionString = builder.Configuration.GetConnectionString("sqldata");
+    // Pega a string de conexão ATUALIZADA (com o TrustServerCertificate)
+    var dbUpConnectionString = app.Configuration.GetConnectionString("sqldata");
 
     // Garante que o banco de dados exista dentro do container Docker
-    EnsureDatabase.For.SqlDatabase(connectionString);
+    EnsureDatabase.For.SqlDatabase(dbUpConnectionString);
 
     // Configura o DbUp para ler os arquivos .sql da pasta Migrations
     var upgrader = DeployChanges.To
-        .SqlDatabase(connectionString)
+        .SqlDatabase(dbUpConnectionString)
         .WithScriptsEmbeddedInAssembly(Assembly.GetExecutingAssembly())
         .LogToConsole()
         .Build();
