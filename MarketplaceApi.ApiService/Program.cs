@@ -33,6 +33,7 @@ builder.Services.AddSwaggerGen();
 
 // Registra o seu repositório (caso ainda não tenha feito)
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
+builder.Services.AddScoped<IProductPriceHistoryRepository, ProductPriceHistoryRepository>();
 
 var app = builder.Build();
 
