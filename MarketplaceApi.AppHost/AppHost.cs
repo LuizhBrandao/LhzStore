@@ -11,6 +11,7 @@ var redis = builder.AddRedis("redis")
 
 // 3. Adiciona o container do MinIO para Armazenamento de Fotos das Cartas (Object Storage)
 var minio = builder.AddContainer("minio", "minio/minio", "latest")
+                   .WithImageRegistry("quay.io")
                    .WithArgs("server", "/data", "--console-address", ":9001")
                    .WithEnvironment("MINIO_ROOT_USER", "admin")
                    .WithEnvironment("MINIO_ROOT_PASSWORD", "password123")

@@ -18,7 +18,7 @@
     <PackageReference Include="Aspire.StackExchange.Redis.DistributedCaching" Version="13.5.3" />
     <PackageReference Include="Aspire.StackExchange.Redis.OutputCaching" Version="13.5.3" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.10" />
-    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.5.0" />
+    <PackageReference Include="Scalar.AspNetCore" Version="2.17.3" />
   </ItemGroup>
 
 </Project>

@@ -9,6 +9,7 @@ using MarketplaceApi.Infrastructure.Search;
 using MarketplaceApi.Infrastructure.Storage;
 using Microsoft.AspNetCore.OutputCaching;
 using Microsoft.EntityFrameworkCore;
+using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -32,9 +33,8 @@ builder.Services.AddSingleton<IImageStorageService, MinioImageStorageService>();
 builder.Services.AddSingleton<ICacheLockService, RedisLockService>();
 builder.Services.AddSingleton<IProductSearchService, MeilisearchProductSearchService>();
 
-// 4. OpenAPI / Swagger
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+// 4. OpenAPI / Scalar
+builder.Services.AddOpenApi();
 
 var app = builder.Build();
 
@@ -50,8 +50,8 @@ app.UseOutputCache();
 
 if (app.Environment.IsDevelopment())
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
+    app.MapOpenApi();
+    app.MapScalarApiReference();
 }
 
 // 7. Endpoints da API REST (Minimal APIs)
