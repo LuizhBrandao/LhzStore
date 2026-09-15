@@ -5,10 +5,28 @@ var postgres = builder.AddPostgres("postgres")
                       .WithPgAdmin()
                       .AddDatabase("marketplacedb");
 
-// 2. Injeta a conexão do banco de dados na API e aguarda o container iniciar
+// 2. Adiciona o container do Redis para Cache Distribuído, Output Cache e Locks
+var redis = builder.AddRedis("redis")
+                   .WithRedisCommander();
+
+// 3. Adiciona o container do MinIO para Armazenamento de Fotos das Cartas (Object Storage)
+var minio = builder.AddContainer("minio", "minio/minio", "latest")
+                   .WithArgs("server", "/data", "--console-address", ":9001")
+                   .WithEnvironment("MINIO_ROOT_USER", "admin")
+                   .WithEnvironment("MINIO_ROOT_PASSWORD", "password123")
+                   .WithHttpEndpoint(port: 9000, targetPort: 9000, name: "s3")
+                   .WithHttpEndpoint(port: 9001, targetPort: 9001, name: "console");
+
+// 4. Injeta as conexões na API e aguarda os recursos ficarem prontos
 var apiService = builder.AddProject<Projects.MarketplaceApi_ApiService>("apiservice")
                         .WithReference(postgres)
-                        .WaitFor(postgres);
+                        .WithReference(redis)
+                        .WithEnvironment("Storage__S3Endpoint", minio.GetEndpoint("s3"))
+                        .WithEnvironment("Storage__AccessKey", "admin")
+                        .WithEnvironment("Storage__SecretKey", "password123")
+                        .WithEnvironment("Storage__BucketName", "lhzstore-cards")
+                        .WaitFor(postgres)
+                        .WaitFor(redis);
 
 var webfrontend = builder.AddProject<Projects.MarketplaceApi_Web>("webfrontend")
     .WithExternalHttpEndpoints()

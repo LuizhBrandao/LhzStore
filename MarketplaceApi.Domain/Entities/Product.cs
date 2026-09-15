@@ -142,4 +142,9 @@ public class Product
         Collection = collection.Trim();
         ImageUrl = imageUrl.Trim();
     }
+
+    public void UpdateImageUrl(string imageUrl)
+    {
+        ImageUrl = imageUrl?.Trim() ?? string.Empty;
+    }
 }

@@ -1,12 +1,14 @@
 @ApiService_HostAddress = http://localhost:5355
+@productId = 00000000-0000-0000-0000-000000000000
+@imageFileName = example.png
 
-### Listar todos os produtos
+### Listar todos os produtos (com Cache de Saída no Redis - tag "products-cache")
 GET {{ApiService_HostAddress}}/api/products
 Accept: application/json
 
 ###
 
-### Criar novo produto (Charizard Base Set)
+### Criar novo produto (Charizard Base Set - invalida o cache do Redis)
 POST {{ApiService_HostAddress}}/api/products
 Content-Type: application/json
 
@@ -24,7 +26,7 @@ Content-Type: application/json
 
 ###
 
-### Atualizar precificação de um produto
+### Atualizar precificação de um produto (invalida o cache do Redis)
 PUT {{ApiService_HostAddress}}/api/products/{{productId}}/pricing
 Content-Type: application/json
 
@@ -35,7 +37,7 @@ Content-Type: application/json
 
 ###
 
-### Atualizar estoque de um produto
+### Atualizar estoque de um produto (protegido por Distributed Lock no Redis)
 PUT {{ApiService_HostAddress}}/api/products/{{productId}}/stock
 Content-Type: application/json
 
@@ -48,5 +50,23 @@ Content-Type: application/json
 ### Obter histórico de preços de um produto
 GET {{ApiService_HostAddress}}/api/products/{{productId}}/history
 Accept: application/json
+
+###
+
+### Upload de foto real da carta para o MinIO / Object Storage
+POST {{ApiService_HostAddress}}/api/products/{{productId}}/images
+Content-Type: multipart/form-data; boundary=boundary
+
+--boundary
+Content-Disposition: form-data; name="file"; filename="charizard_real_front.png"
+Content-Type: image/png
+
+< ./charizard_real_front.png
+--boundary--
+
+###
+
+### Download / Exibição da foto da carta a partir do MinIO / Object Storage
+GET {{ApiService_HostAddress}}/api/images/{{imageFileName}}
 
 ###

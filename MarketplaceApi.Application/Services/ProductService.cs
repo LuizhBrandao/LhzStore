@@ -85,6 +85,18 @@ public class ProductService : IProductService
         return ProductDto.FromDomain(product);
     }
 
+    public async Task<ProductDto?> UpdateImageUrlAsync(Guid id, string imageUrl, CancellationToken cancellationToken = default)
+    {
+        var product = await _productRepository.GetByIdAsync(id, cancellationToken);
+        if (product is null)
+            return null;
+
+        product.UpdateImageUrl(imageUrl);
+        await _productRepository.UpdateAsync(product, cancellationToken);
+
+        return ProductDto.FromDomain(product);
+    }
+
     public async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
     {
         var product = await _productRepository.GetByIdAsync(id, cancellationToken);
