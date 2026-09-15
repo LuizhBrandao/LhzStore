@@ -1,79 +1,116 @@
-using System.Data;
-using Microsoft.Data.SqlClient;
-using System.Reflection;
-using DbUp;
-using MarketplaceApi.ApiService.Interfaces;
-using MarketplaceApi.ApiService.Repositories;
+using MarketplaceApi.Application.DTOs;
+using MarketplaceApi.Application.Services;
+using MarketplaceApi.Domain.Repositories;
+using MarketplaceApi.Infrastructure.Persistence;
+using MarketplaceApi.Infrastructure.Repositories;
+using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// =========================================================================
-// 1. AJUSTE PARA O ASPIRE (IGNORAR ERRO DE CERTIFICADO LOCAL)
-// =========================================================================
-// Captura a connection string que o Aspire gerou e injetou dinamicamente
-var connectionString = builder.Configuration.GetConnectionString("sqldata");
+// 1. Configurações padrão do .NET Aspire (OpenTelemetry, HealthChecks, Resiliência)
+builder.AddServiceDefaults();
 
-// Se ela existir e ainda não tiver o TrustServerCertificate, nós adicionamos
-if (!string.IsNullOrEmpty(connectionString) && !connectionString.Contains("TrustServerCertificate"))
-{
-    connectionString += ";TrustServerCertificate=True;";
-    // Sobrescreve a configuração na memória com o parâmetro novo
-    builder.Configuration["ConnectionStrings:sqldata"] = connectionString;
-}
-// =========================================================================
+// 2. Registro do PostgreSQL via .NET Aspire
+builder.AddNpgsqlDbContext<MarketplaceDbContext>("marketplacedb");
 
-// 2. Registra a conexão com o banco de dados gerenciado pelo Aspire (agora com o certificado confiável)
-builder.AddSqlServerClient("sqldata");
+// 3. Injeção de Dependências das Camadas DDD
+builder.Services.AddScoped<IProductRepository, ProductRepository>();
+builder.Services.AddScoped<IProductPriceHistoryRepository, ProductPriceHistoryRepository>();
+builder.Services.AddScoped<IProductService, ProductService>();
 
-builder.Services.AddScoped<IDbConnection>(sp => sp.GetRequiredService<SqlConnection>());
-
-// (Mantenha seus outros registros aqui, como o AddEndpointsApiExplorer, Swagger, etc)
+// 4. OpenAPI / Swagger
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// Registra o seu repositório (caso ainda não tenha feito)
-builder.Services.AddScoped<IProductRepository, ProductRepository>();
-builder.Services.AddScoped<IProductPriceHistoryRepository, ProductPriceHistoryRepository>();
-
 var app = builder.Build();
 
-// ==========================================
-// 3. EXECUÇÃO DO DBUP (MIGRATIONS)
-// ==========================================
+// 5. Garante a criação do esquema no PostgreSQL ao iniciar
 using (var scope = app.Services.CreateScope())
 {
-    // Pega a string de conexão ATUALIZADA (com o TrustServerCertificate)
-    var dbUpConnectionString = app.Configuration.GetConnectionString("sqldata");
-
-    // Garante que o banco de dados exista dentro do container Docker
-    EnsureDatabase.For.SqlDatabase(dbUpConnectionString);
-
-    // Configura o DbUp para ler os arquivos .sql da pasta Migrations
-    var upgrader = DeployChanges.To
-        .SqlDatabase(dbUpConnectionString)
-        .WithScriptsEmbeddedInAssembly(Assembly.GetExecutingAssembly())
-        .LogToConsole()
-        .Build();
-
-    // Roda os scripts no banco
-    var result = upgrader.PerformUpgrade();
-
-    if (!result.Successful)
-    {
-        Console.ForegroundColor = ConsoleColor.Red;
-        Console.WriteLine($"Erro nas migrations: {result.Error}");
-        Console.ResetColor();
-    }
-    else
-    {
-        Console.ForegroundColor = ConsoleColor.Green;
-        Console.WriteLine("Migrations executadas com sucesso!");
-        Console.ResetColor();
-    }
+    var dbContext = scope.ServiceProvider.GetRequiredService<MarketplaceDbContext>();
+    await dbContext.Database.EnsureCreatedAsync();
 }
-// ==========================================
 
-// (Mantenha o restante do seu código: app.UseSwagger(), map dos endpoints, etc.)
+// 6. Swagger UI em desenvolvimento
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
+
+// 7. Endpoints da API REST (Minimal APIs)
+var productsGroup = app.MapGroup("/api/products").WithTags("Products");
+
+productsGroup.MapGet("/", async (IProductService productService, CancellationToken ct) =>
+{
+    var products = await productService.GetAllAsync(ct);
+    return Results.Ok(products);
+})
+.WithName("GetAllProducts");
+
+productsGroup.MapGet("/{id:guid}", async (Guid id, IProductService productService, CancellationToken ct) =>
+{
+    var product = await productService.GetByIdAsync(id, ct);
+    return product is not null ? Results.Ok(product) : Results.NotFound();
+})
+.WithName("GetProductById");
+
+productsGroup.MapPost("/", async (CreateProductRequest request, IProductService productService, CancellationToken ct) =>
+{
+    try
+    {
+        var created = await productService.CreateAsync(request, ct);
+        return Results.CreatedAtRoute("GetProductById", new { id = created.Id }, created);
+    }
+    catch (ArgumentException ex)
+    {
+        return Results.BadRequest(new { error = ex.Message });
+    }
+})
+.WithName("CreateProduct");
+
+productsGroup.MapPut("/{id:guid}/pricing", async (Guid id, UpdatePricingRequest request, IProductService productService, CancellationToken ct) =>
+{
+    try
+    {
+        var updated = await productService.UpdatePricingAsync(id, request, ct);
+        return updated is not null ? Results.Ok(updated) : Results.NotFound();
+    }
+    catch (ArgumentException ex)
+    {
+        return Results.BadRequest(new { error = ex.Message });
+    }
+})
+.WithName("UpdateProductPricing");
+
+productsGroup.MapPut("/{id:guid}/stock", async (Guid id, UpdateStockRequest request, IProductService productService, CancellationToken ct) =>
+{
+    try
+    {
+        var updated = await productService.UpdateStockAsync(id, request, ct);
+        return updated is not null ? Results.Ok(updated) : Results.NotFound();
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.BadRequest(new { error = ex.Message });
+    }
+})
+.WithName("UpdateProductStock");
+
+productsGroup.MapDelete("/{id:guid}", async (Guid id, IProductService productService, CancellationToken ct) =>
+{
+    var deleted = await productService.DeleteAsync(id, ct);
+    return deleted ? Results.NoContent() : Results.NotFound();
+})
+.WithName("DeleteProduct");
+
+productsGroup.MapGet("/{id:guid}/history", async (Guid id, IProductService productService, CancellationToken ct) =>
+{
+    var history = await productService.GetPriceHistoryAsync(id, ct);
+    return Results.Ok(history);
+})
+.WithName("GetProductPriceHistory");
 
 app.MapDefaultEndpoints();
+
 app.Run();

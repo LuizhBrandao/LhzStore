@@ -1,4 +1,7 @@
 <Solution>
+  <Project Path="MarketplaceApi.Domain/MarketplaceApi.Domain.csproj" />
+  <Project Path="MarketplaceApi.Application/MarketplaceApi.Application.csproj" />
+  <Project Path="MarketplaceApi.Infrastructure/MarketplaceApi.Infrastructure.csproj" />
   <Project Path="MarketplaceApi.ApiService/MarketplaceApi.ApiService.csproj" />
   <Project Path="MarketplaceApi.AppHost/MarketplaceApi.AppHost.csproj" />
   <Project Path="MarketplaceApi.ServiceDefaults/MarketplaceApi.ServiceDefaults.csproj" />

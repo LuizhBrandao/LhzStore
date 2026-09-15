@@ -1,6 +1,52 @@
 @ApiService_HostAddress = http://localhost:5355
 
-GET {{ApiService_HostAddress}}/weatherforecast/
+### Listar todos os produtos
+GET {{ApiService_HostAddress}}/api/products
+Accept: application/json
+
+###
+
+### Criar novo produto (Charizard Base Set)
+POST {{ApiService_HostAddress}}/api/products
+Content-Type: application/json
+
+{
+  "externalCardId": "base1-4",
+  "name": "Charizard",
+  "collection": "Base Set",
+  "imageUrl": "https://images.pokemontcg.io/base1/4_hires.png",
+  "condition": 2,
+  "language": 1,
+  "stockQuantity": 3,
+  "averagePurchasePrice": 150.00,
+  "ligaPokemonPrice": 250.00
+}
+
+###
+
+### Atualizar precificação de um produto
+PUT {{ApiService_HostAddress}}/api/products/{{productId}}/pricing
+Content-Type: application/json
+
+{
+  "averagePurchasePrice": 160.00,
+  "ligaPokemonPrice": 280.00
+}
+
+###
+
+### Atualizar estoque de um produto
+PUT {{ApiService_HostAddress}}/api/products/{{productId}}/stock
+Content-Type: application/json
+
+{
+  "quantity": 5
+}
+
+###
+
+### Obter histórico de preços de um produto
+GET {{ApiService_HostAddress}}/api/products/{{productId}}/history
 Accept: application/json
 
 ###

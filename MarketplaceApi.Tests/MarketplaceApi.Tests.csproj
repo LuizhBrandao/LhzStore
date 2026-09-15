@@ -25,6 +25,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\MarketplaceApi.AppHost\MarketplaceApi.AppHost.csproj" />
+    <ProjectReference Include="..\MarketplaceApi.Domain\MarketplaceApi.Domain.csproj" />
+    <ProjectReference Include="..\MarketplaceApi.Application\MarketplaceApi.Application.csproj" />
   </ItemGroup>
 
   <ItemGroup>

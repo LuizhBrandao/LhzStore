@@ -1,13 +1,14 @@
 var builder = DistributedApplication.CreateBuilder(args);
 
-// 1. Adiciona o container do SQL Server e cria um banco chamado "sqldata"
-var sql = builder.AddSqlServer("sql")
-                 .AddDatabase("sqldata");
+// 1. Adiciona o container do PostgreSQL e cria o banco transacional "marketplacedb"
+var postgres = builder.AddPostgres("postgres")
+                      .WithPgAdmin()
+                      .AddDatabase("marketplacedb");
 
-// 2. Injeta a string de conexão desse banco de dados na sua API e ESPERA ele ficar pronto
+// 2. Injeta a conexão do banco de dados na API e aguarda o container iniciar
 var apiService = builder.AddProject<Projects.MarketplaceApi_ApiService>("apiservice")
-                        .WithReference(sql)
-                        .WaitFor(sql); // <-- ADICIONE ESTA LINHA
+                        .WithReference(postgres)
+                        .WaitFor(postgres);
 
 var webfrontend = builder.AddProject<Projects.MarketplaceApi_Web>("webfrontend")
     .WithExternalHttpEndpoints()
