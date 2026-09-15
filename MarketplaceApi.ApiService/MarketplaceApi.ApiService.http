@@ -8,7 +8,7 @@ Accept: application/json
 
 ###
 
-### Criar novo produto (Charizard Base Set - invalida o cache do Redis)
+### Criar novo produto (Charizard Base Set - invalida o cache do Redis e indexa no Meilisearch)
 POST {{ApiService_HostAddress}}/api/products
 Content-Type: application/json
 
@@ -26,7 +26,7 @@ Content-Type: application/json
 
 ###
 
-### Atualizar precificação de um produto (invalida o cache do Redis)
+### Atualizar precificação de um produto (invalida o cache do Redis e atualiza Meilisearch)
 PUT {{ApiService_HostAddress}}/api/products/{{productId}}/pricing
 Content-Type: application/json
 
@@ -49,6 +49,18 @@ Content-Type: application/json
 
 ### Obter histórico de preços de um produto
 GET {{ApiService_HostAddress}}/api/products/{{productId}}/history
+Accept: application/json
+
+###
+
+### Busca Textual no Meilisearch com Tolerância a Erros (ex: "charzard") e Filtros Facetados
+GET {{ApiService_HostAddress}}/api/products/search?q=charzard&condition=NearMint&language=PT&minPrice=100&maxPrice=300
+Accept: application/json
+
+###
+
+### Reindexação em lote do catálogo completo para o Meilisearch
+POST {{ApiService_HostAddress}}/api/products/search/reindex
 Accept: application/json
 
 ###

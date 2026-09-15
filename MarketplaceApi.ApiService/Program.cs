@@ -1,9 +1,11 @@
 using MarketplaceApi.Application.DTOs;
 using MarketplaceApi.Application.Services;
+using MarketplaceApi.Domain.Enums;
 using MarketplaceApi.Domain.Repositories;
 using MarketplaceApi.Infrastructure.Cache;
 using MarketplaceApi.Infrastructure.Persistence;
 using MarketplaceApi.Infrastructure.Repositories;
+using MarketplaceApi.Infrastructure.Search;
 using MarketplaceApi.Infrastructure.Storage;
 using Microsoft.AspNetCore.OutputCaching;
 using Microsoft.EntityFrameworkCore;
@@ -28,6 +30,7 @@ builder.Services.AddScoped<IProductPriceHistoryRepository, ProductPriceHistoryRe
 builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddSingleton<IImageStorageService, MinioImageStorageService>();
 builder.Services.AddSingleton<ICacheLockService, RedisLockService>();
+builder.Services.AddSingleton<IProductSearchService, MeilisearchProductSearchService>();
 
 // 4. OpenAPI / Swagger
 builder.Services.AddEndpointsApiExplorer();
@@ -172,6 +175,38 @@ productsGroup.MapGet("/{id:guid}/history", async (Guid id, IProductService produ
     return Results.Ok(history);
 })
 .WithName("GetProductPriceHistory");
+
+// Busca Textual com Meilisearch (Fuzzy Search e Filtros de Catálogo)
+productsGroup.MapGet("/search", async (
+    string? q,
+    string? collection,
+    CardCondition? condition,
+    CardLanguage? language,
+    decimal? minPrice,
+    decimal? maxPrice,
+    int? limit,
+    int? offset,
+    IProductSearchService searchService,
+    CancellationToken ct) =>
+{
+    var query = new ProductSearchQuery(q, collection, condition, language, minPrice, maxPrice, limit ?? 20, offset ?? 0);
+    var results = await searchService.SearchAsync(query, ct);
+    return Results.Ok(results);
+})
+.WithName("SearchProducts");
+
+// Reindexação em lote de todos os produtos para o Meilisearch
+productsGroup.MapPost("/search/reindex", async (
+    IProductService productService,
+    IProductSearchService searchService,
+    CancellationToken ct) =>
+{
+    var products = await productService.GetAllAsync(ct);
+    var productList = products.ToList();
+    await searchService.ReindexAllAsync(productList, ct);
+    return Results.Ok(new { message = $"{productList.Count} produtos reindexados com sucesso no Meilisearch." });
+})
+.WithName("ReindexProducts");
 
 // 8. Endpoints de Armazenamento de Imagens das Cartas (Object Storage / MinIO)
 var imagesGroup = app.MapGroup("/api").WithTags("Images");

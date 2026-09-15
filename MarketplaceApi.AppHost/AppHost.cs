@@ -17,7 +17,13 @@ var minio = builder.AddContainer("minio", "minio/minio", "latest")
                    .WithHttpEndpoint(port: 9000, targetPort: 9000, name: "s3")
                    .WithHttpEndpoint(port: 9001, targetPort: 9001, name: "console");
 
-// 4. Injeta as conexões na API e aguarda os recursos ficarem prontos
+// 4. Adiciona o container do Meilisearch para Busca Textual e Filtros de Catálogo
+var meilisearch = builder.AddContainer("meilisearch", "getmeili/meilisearch", "v1.12")
+                         .WithEnvironment("MEILI_NO_ANALYTICS", "true")
+                         .WithEnvironment("MEILI_MASTER_KEY", "masterKey123")
+                         .WithHttpEndpoint(port: 7700, targetPort: 7700, name: "meili-http");
+
+// 5. Injeta as conexões na API e aguarda os recursos ficarem prontos
 var apiService = builder.AddProject<Projects.MarketplaceApi_ApiService>("apiservice")
                         .WithReference(postgres)
                         .WithReference(redis)
@@ -25,6 +31,8 @@ var apiService = builder.AddProject<Projects.MarketplaceApi_ApiService>("apiserv
                         .WithEnvironment("Storage__AccessKey", "admin")
                         .WithEnvironment("Storage__SecretKey", "password123")
                         .WithEnvironment("Storage__BucketName", "lhzstore-cards")
+                        .WithEnvironment("Meilisearch__Endpoint", meilisearch.GetEndpoint("meili-http"))
+                        .WithEnvironment("Meilisearch__ApiKey", "masterKey123")
                         .WaitFor(postgres)
                         .WaitFor(redis);
 

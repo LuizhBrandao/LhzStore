@@ -8,13 +8,16 @@ public class ProductService : IProductService
 {
     private readonly IProductRepository _productRepository;
     private readonly IProductPriceHistoryRepository _historyRepository;
+    private readonly IProductSearchService? _searchService;
 
     public ProductService(
         IProductRepository productRepository,
-        IProductPriceHistoryRepository historyRepository)
+        IProductPriceHistoryRepository historyRepository,
+        IProductSearchService? searchService = null)
     {
         _productRepository = productRepository;
         _historyRepository = historyRepository;
+        _searchService = searchService;
     }
 
     public async Task<IEnumerable<ProductDto>> GetAllAsync(CancellationToken cancellationToken = default)
@@ -52,7 +55,13 @@ public class ProductService : IProductService
             await _historyRepository.AddAsync(history, cancellationToken);
         }
 
-        return ProductDto.FromDomain(product);
+        var dto = ProductDto.FromDomain(product);
+        if (_searchService != null)
+        {
+            await _searchService.IndexProductAsync(dto, cancellationToken);
+        }
+
+        return dto;
     }
 
     public async Task<ProductDto?> UpdatePricingAsync(Guid id, UpdatePricingRequest request, CancellationToken cancellationToken = default)
@@ -70,7 +79,13 @@ public class ProductService : IProductService
             await _historyRepository.AddAsync(history, cancellationToken);
         }
 
-        return ProductDto.FromDomain(product);
+        var dto = ProductDto.FromDomain(product);
+        if (_searchService != null)
+        {
+            await _searchService.IndexProductAsync(dto, cancellationToken);
+        }
+
+        return dto;
     }
 
     public async Task<ProductDto?> UpdateStockAsync(Guid id, UpdateStockRequest request, CancellationToken cancellationToken = default)
@@ -82,7 +97,13 @@ public class ProductService : IProductService
         product.UpdateStock(request.Quantity);
         await _productRepository.UpdateAsync(product, cancellationToken);
 
-        return ProductDto.FromDomain(product);
+        var dto = ProductDto.FromDomain(product);
+        if (_searchService != null)
+        {
+            await _searchService.IndexProductAsync(dto, cancellationToken);
+        }
+
+        return dto;
     }
 
     public async Task<ProductDto?> UpdateImageUrlAsync(Guid id, string imageUrl, CancellationToken cancellationToken = default)
@@ -94,7 +115,13 @@ public class ProductService : IProductService
         product.UpdateImageUrl(imageUrl);
         await _productRepository.UpdateAsync(product, cancellationToken);
 
-        return ProductDto.FromDomain(product);
+        var dto = ProductDto.FromDomain(product);
+        if (_searchService != null)
+        {
+            await _searchService.IndexProductAsync(dto, cancellationToken);
+        }
+
+        return dto;
     }
 
     public async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
@@ -104,6 +131,12 @@ public class ProductService : IProductService
             return false;
 
         await _productRepository.DeleteAsync(product, cancellationToken);
+
+        if (_searchService != null)
+        {
+            await _searchService.RemoveProductIndexAsync(id, cancellationToken);
+        }
+
         return true;
     }
 
